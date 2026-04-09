@@ -4,7 +4,7 @@
  * @Date: 2026-03-28
  */
 #pragma once
-#include <atomic>
+#include "atomicbool.hpp"
 #include <map>
 #include <string>
 namespace jev_log {
@@ -96,29 +96,29 @@ public:
         : level_(INFO){};
     LoggingLevel(const LoggingLevel& other)
         : level_(other.level_) {
-        status_.store(other.status_);
+        status_ = other.status_;
     };
     LoggingLevel(const LEVELS& other_level)
         : level_(other_level) {
-        status_.store(true);
+        status_ = true;
     }
     LoggingLevel(const LEVELS& other_level, const bool enabled)
         : level_(other_level) {
-        status_.store(enabled);
+        status_ = enabled;
     }
     ~LoggingLevel() = default;
 
     LoggingLevel& operator=(const LoggingLevel& other) {
-        status_.store(other.status_);
+        status_ = other.status_;
         level_ = other.level_;
         return *this;
     }
 
-    bool operator==(const LoggingLevel& other) {
-        return (other.level_ == level_) && (other.status_ == status_);
+    bool operator==(const LoggingLevel& other) const {
+        return (other.level_ == level_) && (other.status_.value() == status_.value());
     }
 
-    std::atomic<bool> status_{false};
+    jev::atomicbool status_{false};
     LEVELS level_;
 };  // namespace intrclass LoggingLevel
 

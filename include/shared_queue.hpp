@@ -3,13 +3,17 @@
  * @Author: jev
  * @Date: 2026-03-30
  */
+#pragma once
+
+#include "base_queue.hpp"
 #include <condition_variable>
+#include <cstddef>
 #include <mutex>
 #include <queue>
 
 namespace jev {
 template <typename T>
-class shared_queue {
+class shared_queue : public BaseQueue<T> {
 private:
     std::queue<T> queue_;
     mutable std::mutex mtx_;
@@ -26,12 +30,13 @@ public:
      *
      * @param item
      */
-    void push(T item) {
+    bool tryEnqueue(const T& item) override {
         {
             std::lock_guard<std::mutex> lck(mtx_);
             queue_.push(item);
         }
         data_cond_.notify_one();
+        return true;
     }
 
     /**
@@ -41,13 +46,14 @@ public:
      * @return true
      * @return false
      */
-    bool try_and_pop(T& pop_item) {
+    bool tryDequeue(T& pop_item) override {
         std::lock_guard<std::mutex> lck(mtx_);
 
         if (queue_.empty()) { return false; }
 
         pop_item = std::move(queue_.front());
         queue_.pop();
+        return true;
     }
 
     /**
@@ -55,8 +61,8 @@ public:
      *
      * @param pop_item
      */
-    void wait_and_pop(T& pop_item) {
-        std::lock_guard<std::mutex> lck(mtx_);
+    void waitAndDequeue(T& pop_item) override {
+        std::unique_lock<std::mutex> lck(mtx_);
 
         data_cond_.wait(lck, [this]() { return !queue_.empty(); });
 
@@ -71,7 +77,7 @@ public:
      * @return true
      * @return false
      */
-    bool empty() const {
+    bool isEmpty() const override {
         std::lock_guard<std::mutex> lck(mtx_);
 
         return queue_.empty();
@@ -82,10 +88,26 @@ public:
      *
      * @return unsigned
      */
-    unsigned size() const {
+    std::size_t size() const override {
         std::lock_guard<std::mutex> lck(mtx_);
 
         return queue_.size();
+    }
+
+    void push(T item) {
+        (void)tryEnqueue(item);
+    }
+
+    bool try_and_pop(T& pop_item) {
+        return tryDequeue(pop_item);
+    }
+
+    void wait_and_pop(T& pop_item) {
+        waitAndDequeue(pop_item);
+    }
+
+    bool empty() const {
+        return isEmpty();
     }
 };
 }  // namespace jev

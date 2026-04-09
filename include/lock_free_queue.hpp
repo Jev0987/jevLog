@@ -3,9 +3,13 @@
  * @Author: jev
  * @Date: 2026-03-30
  */
+#pragma once
+
+#include "base_queue.hpp"
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <thread>
 namespace jev {
 
 /**
@@ -15,7 +19,7 @@ namespace jev {
  * @tparam Size  缓冲区大小
  */
 template <typename T, std::size_t Size>
-class LockFreeQueue {
+class LockFreeQueue : public BaseQueue<T> {
 private:
     /**
      * @brief 环形缓冲中的节点数据结构
@@ -51,7 +55,7 @@ public:
      * @return true
      * @return false
      */
-    bool try_enqueue(const T& data) {
+    bool tryEnqueue(const T& data) override {
         size_t pos = enqueue_pos_.load(std::memory_order_relaxed);
         for (;;) {
             // 环形slot定位逻辑， 期望位置 % 队列大小。
@@ -89,7 +93,7 @@ public:
      * @return true
      * @return false
      */
-    bool try_dequeue(T& data) {
+    bool tryDequeue(T& data) override {
         size_t pos = dequeue_pos_.load(std::memory_order_relaxed);
 
         for (;;) {
@@ -113,6 +117,30 @@ public:
                 pos = dequeue_pos_.load(std::memory_order_relaxed);
             }
         }
+    }
+
+    void waitAndDequeue(T& data) override {
+        while (!tryDequeue(data)) {
+            std::this_thread::yield();
+        }
+    }
+
+    bool isEmpty() const override {
+        return size() == 0;
+    }
+
+    std::size_t size() const override {
+        const std::size_t enqueuePos = enqueue_pos_.load(std::memory_order_acquire);
+        const std::size_t dequeuePos = dequeue_pos_.load(std::memory_order_acquire);
+        return enqueuePos - dequeuePos;
+    }
+
+    bool try_enqueue(const T& data) {
+        return tryEnqueue(data);
+    }
+
+    bool try_dequeue(T& data) {
+        return tryDequeue(data);
     }
 };
 }  // namespace jev
