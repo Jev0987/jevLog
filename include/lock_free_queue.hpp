@@ -20,26 +20,6 @@ namespace jev {
  */
 template <typename T, std::size_t Size>
 class LockFreeQueue : public BaseQueue<T> {
-private:
-    /**
-     * @brief 环形缓冲中的节点数据结构
-     *
-     */
-    struct Node {
-        std::atomic<size_t> seq;  // 序列号（原子变量，注意是size_t，无符号）
-        T data;                   // 实际数据
-    };
-
-    /**
-     * @brief 编译时断言检查，如果不满足直接报错
-     *
-     */
-    static_assert((Size & (Size - 1)) == 0, "Size must be power of 2");
-
-    alignas(64) Node buffer_[Size];                // 环形缓冲区 slot
-    alignas(64) std::atomic<size_t> enqueue_pos_;  // 生产者全局游标
-    alignas(64) std::atomic<size_t> dequeue_pos_;  // 消费者全局游标
-
 public:
     LockFreeQueue()
         : enqueue_pos_(0)
@@ -47,6 +27,27 @@ public:
         // 初始化，当 buffer[i] == i 时，意味着可写
         for (size_t i = 0; i < Size; ++i) buffer_[i].seq.store(i);
     }
+
+    /**
+     * @brief 插入元素
+     *
+     * @param item
+     */
+    void push(T item) override { tryEnqueue(item); }
+
+    /**
+     * @brief 尝试出队
+     *
+     * @param item
+     */
+    void try_and_pop(T& item) override { tryDequeue(item); }
+
+    /**
+     * @brief 阻塞等待出队
+     *
+     * @param item
+     */
+    void wait_and_pop(T& item) override { waitAndDequeue(item); }
 
     /**
      * @brief 尝试入队
@@ -120,14 +121,10 @@ public:
     }
 
     void waitAndDequeue(T& data) override {
-        while (!tryDequeue(data)) {
-            std::this_thread::yield();
-        }
+        while (!tryDequeue(data)) { std::this_thread::yield(); }
     }
 
-    bool isEmpty() const override {
-        return size() == 0;
-    }
+    bool isEmpty() const override { return size() == 0; }
 
     std::size_t size() const override {
         const std::size_t enqueuePos = enqueue_pos_.load(std::memory_order_acquire);
@@ -135,12 +132,28 @@ public:
         return enqueuePos - dequeuePos;
     }
 
-    bool try_enqueue(const T& data) {
-        return tryEnqueue(data);
-    }
+    bool try_enqueue(const T& data) { return tryEnqueue(data); }
 
-    bool try_dequeue(T& data) {
-        return tryDequeue(data);
-    }
+    bool try_dequeue(T& data) { return tryDequeue(data); }
+
+private:
+    /**
+     * @brief 环形缓冲中的节点数据结构
+     *
+     */
+    struct Node {
+        std::atomic<size_t> seq;  // 序列号（原子变量，注意是size_t，无符号）
+        T data;                   // 实际数据
+    };
+
+    /**
+     * @brief 编译时断言检查，如果不满足直接报错
+     *
+     */
+    static_assert((Size & (Size - 1)) == 0, "Size must be power of 2");
+
+    alignas(64) Node buffer_[Size];                // 环形缓冲区 slot
+    alignas(64) std::atomic<size_t> enqueue_pos_;  // 生产者全局游标
+    alignas(64) std::atomic<size_t> dequeue_pos_;  // 消费者全局游标
 };
 }  // namespace jev

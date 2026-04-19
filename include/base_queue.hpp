@@ -10,7 +10,7 @@
 namespace jev {
 
 /**
- * @brief 统一队列接口，便于不同队列实现按同一抽象使用
+ * @brief 队列基类，统一接口，便于不同队列实现按同一抽象使用
  *
  * @tparam T 队列元素类型
  */
@@ -18,6 +18,27 @@ template <typename T>
 class BaseQueue {
 public:
     virtual ~BaseQueue() = default;
+
+    /**
+     * @brief 插入元素
+     *
+     * @param item
+     */
+    virtual void push(T item) = 0;
+
+    /**
+     * @brief 尝试出队
+     *
+     * @param item
+     */
+    virtual void try_and_pop(T& item) = 0;
+
+    /**
+     * @brief 阻塞等待出队
+     *
+     * @param item
+     */
+    virtual void wait_and_pop(T& item) = 0;
 
     /**
      * @brief 尝试入队（非阻塞）

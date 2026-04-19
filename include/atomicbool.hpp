@@ -13,9 +13,6 @@ namespace jev {
  *
  */
 class atomicbool {
-private:
-    std::atomic<bool> value_;
-
 public:
     atomicbool()
         : value_(false) {}
@@ -51,5 +48,8 @@ public:
     bool value() const { return value_.load(std::memory_order_acquire); }
 
     std::atomic<bool>& get() { return value_; }
+
+private:
+    std::atomic<bool> value_;
 };
 }  // namespace jev

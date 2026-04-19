@@ -14,16 +14,29 @@
 namespace jev {
 template <typename T>
 class shared_queue : public BaseQueue<T> {
-private:
-    std::queue<T> queue_;
-    mutable std::mutex mtx_;
-    std::condition_variable data_cond_;
-
-    shared_queue(const shared_queue& other) = delete;
-    shared_queue& operator=(const shared_queue& other) = delete;
-
 public:
     shared_queue() = default;
+
+    /**
+     * @brief 插入元素
+     *
+     * @param item
+     */
+    void push(T item) override { tryEnqueue(item); }
+
+    /**
+     * @brief 尝试出队
+     *
+     * @param item
+     */
+    void try_and_pop(T& item) override { tryDequeue(item); }
+
+    /**
+     * @brief 阻塞等待出队
+     *
+     * @param item
+     */
+    void wait_and_pop(T& item) override { waitAndDequeue(item); }
 
     /**
      * @brief 插入元素
@@ -94,20 +107,20 @@ public:
         return queue_.size();
     }
 
-    void push(T item) {
-        (void)tryEnqueue(item);
-    }
+    void push(T item) { (void)tryEnqueue(item); }
 
-    bool try_and_pop(T& pop_item) {
-        return tryDequeue(pop_item);
-    }
+    bool try_and_pop(T& pop_item) { return tryDequeue(pop_item); }
 
-    void wait_and_pop(T& pop_item) {
-        waitAndDequeue(pop_item);
-    }
+    void wait_and_pop(T& pop_item) { waitAndDequeue(pop_item); }
 
-    bool empty() const {
-        return isEmpty();
-    }
+    bool empty() const { return isEmpty(); }
+
+private:
+    std::queue<T> queue_;
+    mutable std::mutex mtx_;
+    std::condition_variable data_cond_;
+
+    shared_queue(const shared_queue& other) = delete;
+    shared_queue& operator=(const shared_queue& other) = delete;
 };
 }  // namespace jev

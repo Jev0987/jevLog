@@ -25,7 +25,7 @@ status getStatus(LEVELS level) {
 
     if (it == internal::j_log_levels.end()) { return status::Absent; }
 
-    return it->second.status_.load() ? status::Enabled : status::Disabled;
+    return it->second.status_.value() ? status::Enabled : status::Disabled;
 }
 
 void setHightest(LEVELS level) {
@@ -66,7 +66,7 @@ std::string to_string(std::map<int, LoggingLevel> levels2Print) {
     std::string result;
     for (auto& v : internal::j_log_levels) {
         result += "name: " + v.second.level_.text_ + " levels: " + std::to_string(v.first) +
-                  " status: " + std::to_string(v.second.status_) + "\n";
+                  " status: " + std::to_string(v.second.status_.value()) + "\n";
     }
     return result;
 }
@@ -77,7 +77,7 @@ std::map<int, LoggingLevel> getAll() { return internal::j_log_levels; }
 
 bool logLevel(const LEVELS& log_level) {
     int level = log_level.value_;
-    bool status = internal::j_log_levels[log_level.value_].status_;
+    bool status = internal::j_log_levels[log_level.value_].status_.value();
     return status;
 }
 
